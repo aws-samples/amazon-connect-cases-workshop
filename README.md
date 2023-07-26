@@ -20,12 +20,11 @@ In the above architecture, when you create or modify the Amazon Connect case, Am
 
 ## Walkthrough
 
-1.	Download the source code for this repository.
-2.	Zip the source code [here](zip/amazon-connect-cases-workshop.zip).
-3.	Create a S3 solution bucket in your AWS account.
-4.	Place the Zip file create in step 2
-5.	Run the CFT located [here](cft/amazon-connect-cases-workshop-cft.yaml).
-6.	Following parameters needed for the CFT:
+1.	Download the source code zip [here](zip/amazon-connect-cases-workshop.zip).
+2.	Create a S3 solution bucket in your AWS account.
+3.	Upload the downloaded zip file (step 1) into S3 Bucket created in step 2.
+4.	Run the CFT located [here](cft/amazon-connect-cases-workshop-cft.yaml).
+5.	Following parameters needed for the CFT:
     1.	CasesAlertEmail: Email address where you want Cases event notification
     2.	CasesDomainId: Copy the case domain ID from the Amazon Connect instance
     3.	SolutionSourceBucket: Solution bucket created in step 3
