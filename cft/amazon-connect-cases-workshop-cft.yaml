@@ -1,0 +1,240 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Connect Cases
+
+Parameters:
+  SolutionSourceBucket:
+    Type: String
+    Description: S3 Bucket Source 
+  CasesDomainId:
+    Type: String
+    Description: Cases Domain Id
+  CasesAlertEmail:
+    Type: String
+    Description: Email Address to alert on Case Creation
+
+#######################
+# Globals
+#######################
+Globals:
+  Function:
+    Runtime: nodejs16.x
+    Architectures:
+      - x86_64
+    MemorySize: 128
+    Timeout: 900
+    Environment:
+      Variables:
+        CasesAlertEmail: !Ref CasesAlertEmail
+        CasesDomainId: !Ref CasesDomainId
+        QueueUrl: !GetAtt EventSQSQueue.QueueUrl
+        CasesNotificationTopic: !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${CasesNotificationTopic.TopicName}'
+        CasesTable: !Ref CasesTable
+Resources:
+#######################
+# ROLE
+#######################
+  lambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName : !Sub '${AWS::StackName}-${AWS::AccountId}-CasesLambdaRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: logs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+        - PolicyName: sqs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'sqs:ReceiveMessage'
+                  - 'sqs:DeleteMessage'
+                  - 'sqs:GetQueueAttributes'
+                Resource: 
+                  - !GetAtt EventSQSQueue.Arn
+        - PolicyName: sns
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'sns:Publish'
+                Resource: 
+                  - !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${CasesNotificationTopic.TopicName}'
+        - PolicyName: dynamodb
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:PutItem'
+                Resource: 
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${CasesTable}'
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${CasesTable}/*'
+
+#######################
+# LAMBDA , Event Functions
+#######################
+  CaseEventFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-${AWS::AccountId}-CaseEventFunction'
+      Description: CaseEventFunction
+      Handler: index.handler
+      Role: !GetAtt lambdaRole.Arn
+      Timeout: 30
+      CodeUri: 
+        Bucket: !Ref SolutionSourceBucket
+        Key: amazon-connect-cases-workshop.zip
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt EventSQSQueue.Arn
+            BatchSize: 1
+
+#######################
+# EVENT Rule
+#######################
+  EventsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.cases
+      Targets:
+      - 
+        Arn: 
+          Fn::GetAtt: 
+            - EventSQSQueue
+            - Arn
+        Id: EventCasesSQSTarget
+      EventBusName: default
+  PermissionForSQSToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: !Ref "CaseEventFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "sqs.amazonaws.com"
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: 
+        Fn::GetAtt: 
+          - "EventSQSQueue"
+          - "Arn"
+  EventSQSQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName : !Sub '${AWS::StackName}-${AWS::AccountId}-EventSQSQueueCases'
+  EventSQSQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: sqs:SendMessage
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Resource: !GetAtt EventSQSQueue.Arn
+        Version: "2012-10-17"
+      Queues:
+        - Ref: EventSQSQueue
+#######################
+# SNS Topic, Subscription
+#######################
+  CasesNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-${AWS::AccountId}-CasesNotificationTopic'
+      Subscription: 
+        - Endpoint: !Ref CasesAlertEmail
+          Protocol: email
+#######################
+# Cases Configuration Setup 
+#######################
+  CasesSetupLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName : !Sub '${AWS::StackName}-${AWS::AccountId}-CasesSetupLambdaRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: logs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+        - PolicyName: cases
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'cases:PutCaseEventConfiguration'
+                Resource: 
+                  - !Sub 'arn:aws:cases:${AWS::Region}:${AWS::AccountId}:domain/${CasesDomainId}*'
+  CasesLambdaTriggerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-${AWS::AccountId}-CasesLambdaTriggerFunction'
+      Role: !GetAtt CasesSetupLambdaRole.Arn
+      Handler: configuration/index.handler
+      Runtime: nodejs16.x
+      Code: 
+        S3Bucket: !Ref SolutionSourceBucket
+        S3Key: amazon-connect-cases-workshop.zip
+      Environment:
+        Variables:
+          CasesDomainId: !Ref CasesDomainId
+  CasesSetupLambdaTrigger:
+    Type: 'Custom::CasesSetupLambdaTrigger'
+    Properties:
+      ServiceToken: !GetAtt CasesLambdaTriggerFunction.Arn
+      RequestToken: ${ClientRequestToken}
+      CasesDomainId : !Ref CasesDomainId
+
+#######################
+# Dynamodb Table 
+#######################
+  CasesTable:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: caseId
+          AttributeType: S
+      KeySchema: 
+        - AttributeName: caseId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      TableName: Cases

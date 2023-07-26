@@ -1,0 +1,21 @@
+{
+  "name": "amazon-connect-cases-workshop",
+  "version": "1.0.0",
+  "description": "npm install @aws-sdk/client-connectcases\r npm install @aws-sdk/client-sqs",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-connectcases": "^3.362.0",
+    "@aws-sdk/client-sqs": "^3.362.0",
+    "bowser": "^2.11.0",
+    "cfn-response": "^1.0.1",
+    "fast-xml-parser": "^4.0.11",
+    "strnum": "^1.0.5",
+    "tslib": "^2.5.0",
+    "uuid": "^8.3.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT-0"
+}
