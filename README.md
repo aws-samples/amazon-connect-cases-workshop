@@ -6,23 +6,16 @@ Amazon Connect Cases, a feature of Amazon Connect, allows your agents to track a
 
 ## Prerequisites
 It is assumed that you understand the use of the services below and you have the following prerequisites:
-1.  An AWS account with both management console and programmatic administrator access.
-2.  An existing Amazon Connect instance.
-3.  Amazon Connect Customer Profiles enabled on Connect Instance.
-4.  Amazon Connect Cases enabled on Connect Instance.
+1.	An AWS account with both management console and programmatic administrator access.
+2.	An existing Amazon Connect instance.
+3.	Amazon Connect Customer Profiles enabled on Connect Instance. 
+4.	Amazon Connect Cases enabled on Connect Instance. 
 
 ## Architecture diagram 
 
 In the above architecture, when you create or modify the Amazon Connect case, Amazon Connect streams the data through Amazon EventBridge. The events are queued in the Amazon SQS service, followed by AWS Lambda function execution - storing the case event data in the Amazon DynamoDB for analytics purpose and invoking Amazon SNS service. You can integrate downstream application in subscribing to Amazon SNS notification, e.g., we have integrated with the Amazon SES.
 
 ![Architecture Diagram](images/architecture-cases-workshop.png?raw=true)
-
-## Prerequisites
-It is assumed that you understand the use of the services below and you have the following prerequisites:
-1.	An AWS account with both management console and programmatic administrator access.
-2.	An existing Amazon Connect instance.
-3.	Amazon Connect Customer Profiles enabled on Connect Instance. 
-4.	Amazon Connect Cases enabled on Connect Instance. 
 
 
 ## Walkthrough
