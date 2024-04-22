@@ -52,8 +52,7 @@ Step 2: Amazon Connect writes Contact Lens file to Amazon S3, which contains a p
     5. Select Put under vent types
 ![Properties](images/e-eventtype.png?raw=true)
 
-    6. Under the destination, select Lambda function and specific the AWS lambda function name “<stackname>-CasesEventFunction”
-![Properties](images/f-destination.png?raw=true)
+    6. Under the destination, select Lambda function and specific the AWS lambda function name “<stackname>-S3EventLambda
 
 ## Validate
 1. Create or update your cases by placing test call or using the Agent workspace
